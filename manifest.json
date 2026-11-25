@@ -1,0 +1,9 @@
+{
+  "id": "obsidian-chatgpt-native",
+  "name": "Obsidian ChatGPT Native",
+  "version": "0.9.1",
+  "minAppVersion": "1.8.0",
+  "description": "Integrate ChatGPT into Obsidian's Web Viewer with native styling, navigation, and smooth resizing.",
+  "author": "Nick",
+  "isDesktopOnly": true
+}
