@@ -4,16 +4,11 @@ A small desktop-only Obsidian plugin for the built-in Web Viewer. It uses Electr
 
 ## Install
 
-1. Disable Dark Reader for ChatGPT (or disable Dark Reader entirely).
-2. Copy main.js and manifest.json into your vault's .obsidian/plugins/obsidian-chatgpt-native/ directory.
-3. Enable Obsidian ChatGPT Native in Settings > Community plugins. Reload Obsidian if it does not appear.
-4. Set ChatGPT to Adapt to system. With Match background enabled, the plugin attempts per-Web Viewer color-scheme emulation when Obsidian differs from the OS. This uses Electron’s existing debugger API and is unavailable when the guest debugger is occupied (including DevTools) or the runtime does not expose it. It does not change account preferences or the system theme. Open ChatGPT in the core Web Viewer.
+1. Copy main.js and manifest.json into your vault's .obsidian/plugins/obsidian-chatgpt-native/ directory.
+2. Enable Obsidian ChatGPT Native in Settings > Community plugins. Reload Obsidian if it does not appear.
+3. Set ChatGPT to Adapt to system. With Match background enabled, the plugin attempts per-Web Viewer color-scheme emulation when Obsidian differs from the OS. This uses Electron’s existing debugger API and is unavailable when the guest debugger is occupied (including DevTools) or the runtime does not expose it. It does not change account preferences or the system theme. Open ChatGPT in the core Web Viewer.
 
 Settings are grouped into Appearance, Navigation, Performance, Launcher, and Tools. Colors follow Obsidian automatically, including accent and selection changes. All toggle settings are enabled for fresh installations. Sidebar-free navigation takes precedence over legacy sidebar controls. The launcher opens a new chat by default. Existing saved preferences are retained. Other sites are never targeted; disabling the plugin removes its CSS from open tabs.
-
-### Upgrade from ChatGPT Theme Sync
-
-Disable the old plugin before renaming its installed folder from \`chatgpt-theme-sync\` to \`obsidian-chatgpt-native\`. Keep its \`data.json\` to preserve preferences. Replace \`main.js\` and \`manifest.json\` with the new versions, restart Obsidian, and enable Obsidian ChatGPT Native. Reassign any custom hotkeys referencing the old plugin ID.
 
 ## Notes
 
