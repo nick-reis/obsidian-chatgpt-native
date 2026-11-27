@@ -25,6 +25,7 @@ class ThemeSettingsTab extends PluginSettingTab {
         toggle("enabled", "Match background", {desc:"Also sync light/dark mode when ChatGPT adapts to system.", redraw:true});
         toggle("matchSidebar", "Match sidebar", {disabled:!settings.enabled || settings.sidebarFreeMode});
         toggle("matchComposer", "Match composer", {disabled:!settings.enabled});
+        toggle("composerClearance", "Web Viewer bottom clearance", {desc:"Reserve 12 px below the entire ChatGPT Web Viewer for the Obsidian status bar."});
         toggle("matchAccent", "Match accent color");
         toggle("matchSelection", "Match text selection");
         toggle("squareFrame", "Square window corners");

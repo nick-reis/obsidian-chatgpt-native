@@ -479,7 +479,10 @@ test("hidden title bar CSS includes known headers and detected toolbar marker", 
     assert.match(css, /#thread-header/);
     assert.match(css, /data-obsidian-hidden-toolbar/);
     assert.match(css, /#obsidian-chatgpt-sidebar-toggle/);
-    assert.doesNotMatch(css, /#prompt-textarea|aside|article/);
+    assert.doesNotMatch(css, /#prompt-textarea/);
+    assert.match(css, /conversation-title-button/);
+    assert.match(css, /:not\(:is\(aside \*, nav \*, article \*/);
+    assert.match(css, /#thread-bottom \*, form \*/);
 });
 
 test("header detector marks a bounded top navigation row and restores it", () => {
@@ -1245,4 +1248,28 @@ test("color scheme cleanup only detaches the owned guest debugger",async()=>{
     assert.equal(state.appearanceMode,null);
     await instance.clearGuestAppearance(state);
     assert.equal(calls.length,2);
+});
+
+test("host bottom clearance reserves space in the pane and restores existing styles", () => {
+    const map = new Map([["padding-bottom", {v:"5px", p:""}]]);
+    const style = {getPropertyValue:k=>map.get(k)?.v||"",getPropertyPriority:k=>map.get(k)?.p||"",
+        setProperty:(k,v,p)=>map.set(k,{v,p}),removeProperty:k=>map.delete(k)};
+    const pane = {style}, view = {};
+    const clearance = new plugin.WebviewBottomClearance(view, pane);
+    assert.equal(style.getPropertyValue("padding-bottom"), "12px");
+    assert.equal(style.getPropertyPriority("padding-bottom"), "important");
+    assert.equal(style.getPropertyValue("box-sizing"), "border-box");
+    clearance.dispose();
+    assert.equal(style.getPropertyValue("padding-bottom"), "5px");
+    assert.equal(style.getPropertyValue("box-sizing"), "");
+});
+
+test("host bottom clearance does not overwrite styles changed by another owner", () => {
+    const map = new Map();
+    const style = {getPropertyValue:k=>map.get(k)?.v||"",getPropertyPriority:k=>map.get(k)?.p||"",
+        setProperty:(k,v,p)=>map.set(k,{v,p}),removeProperty:k=>map.delete(k)};
+    const clearance = new plugin.WebviewBottomClearance({}, {style});
+    style.setProperty("padding-bottom", "30px", "important");
+    clearance.dispose();
+    assert.equal(style.getPropertyValue("padding-bottom"), "30px");
 });

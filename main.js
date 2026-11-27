@@ -9,6 +9,7 @@ const DEFAULT_SETTINGS = {
     enabled: true,
     matchSidebar: true,
     matchComposer: true,
+    composerClearance: true,
     matchAccent: true,
     matchSelection: true,
     alwaysShowSidebarToggle: true,
@@ -1328,10 +1329,43 @@ class WebviewBackground {
     }
 }
 
+// Reserve space outside the guest, on the Obsidian pane itself. The guest
+// viewport is genuinely shorter; no dependency on ChatGPT's private DOM.
+// Prefer the outer pane so the immediate webview resize host stays intact.
+class WebviewBottomClearance {
+    constructor(view, pane) {
+        this.view = view;
+        this.pane = pane;
+        this.saved = [];
+        const style = pane.style;
+        for (const [name, value] of [["box-sizing", "border-box"], ["padding-bottom", "12px"]]) {
+            const entry = {name, old:style.getPropertyValue(name), priority:style.getPropertyPriority(name)};
+            style.setProperty(name, value, "important");
+            entry.applied = style.getPropertyValue(name);
+            this.saved.push(entry);
+        }
+    }
+    dispose() {
+        const style = this.pane.style;
+        for (const {name, old, priority, applied} of this.saved.reverse()) {
+            if (style.getPropertyValue(name) !== applied || style.getPropertyPriority(name) !== "important") continue;
+            if (old) style.setProperty(name, old, priority);
+            else style.removeProperty(name);
+        }
+        this.saved = [];
+    }
+}
+
 function makeHiddenHeaderCSS() {
     // Only the ChatGPT page header and our own fallback control. Keep the
     // conversation, composer, navigation overlay and Obsidian toolbar intact.
-    return "#page-header, #thread-header, [data-testid='conversation-header'], [data-testid='thread-header'], [data-testid='chat-header'], [data-testid='page-header'], .app-shell-main-header, [data-app-shell-header], [data-app-shell-main-header], [data-obsidian-hidden-toolbar], #obsidian-chatgpt-sidebar-toggle { display: none !important; }";
+    const headers = "#page-header, #thread-header, [data-testid='conversation-header'], [data-testid='thread-header'], [data-testid='chat-header'], [data-testid='page-header'], .app-shell-main-header, [data-app-shell-header], [data-app-shell-main-header], [data-obsidian-hidden-toolbar], #obsidian-chatgpt-sidebar-toggle";
+    // A title-only header can mount before (or without) Share/New chat.
+    // Exclude sidebar titles, message content, dialogs, and the composer.
+    const titles = ":is(#conversation-title, #thread-title, [data-testid='conversation-title'], [data-testid='conversation-title-button'], [data-testid='thread-title'], [data-testid='chat-title'], [data-testid='chat-title-button'])";
+    const protectedContent = ":not(:is(aside *, nav *, article *, [role=dialog] *, [data-message-author-role] *, #app-shell-sidebar *, #browser-sidebar-popover *, #thread-bottom *, form *))";
+    return headers + " { display: none !important; }\n" +
+        "[data-app-shell-sidebar-open] " + titles + protectedContent + " { display: none !important; }";
 }
 
 
@@ -1346,7 +1380,7 @@ function installHeaderHiding(enabled) {
     if (!enabled) { window[key]?.dispose(); return true; }
     if (window[key]) { window[key].refresh(); return true; }
     const attr = "data-obsidian-hidden-toolbar";
-    const controls = 'button[aria-label="New chat"], a[aria-label="New chat"], button[aria-label="Share"], button[aria-label="Share chat"], button[data-testid="share-chat-button"], #obsidian-chatgpt-sidebar-toggle';
+    const controls = 'button[aria-label="New chat"], a[aria-label="New chat"], button[aria-label="Share"], button[aria-label="Share chat"], button[data-testid="share-chat-button"], button[data-testid="model-switcher-dropdown-button"], button[data-testid="conversation-menu-button"], button[data-testid="chat-menu-button"], #obsidian-chatgpt-sidebar-toggle';
     const marked = new Set();
     let frame = 0, disposed = false;
     function discover() {
@@ -1391,6 +1425,7 @@ function installHeaderHiding(enabled) {
             }
         }
     });
+    window.addEventListener?.("resize", schedule);
     observer.observe(document.documentElement, {childList:true, subtree:true,
         attributes:true, attributeFilter:["aria-label","data-testid","data-app-shell-sidebar-open"]});
     window[key] = {
@@ -1398,6 +1433,7 @@ function installHeaderHiding(enabled) {
         dispose() {
             disposed = true;
             observer.disconnect();
+            window.removeEventListener?.("resize", schedule);
             if (frame) cancelAnimationFrame(frame);
             for (const row of marked) row.removeAttribute(attr);
             marked.clear();
@@ -1571,7 +1607,7 @@ class WebviewSession {
         this.sidebarQueue = Promise.resolve();
         this.listeners = [];
         this.key = this.signature = this.sidebarEnabled = this.headerEnabled = null;
-        this.addressBar = this.resize = this.background = this.navigationURL = this.hostSidebar = null;
+        this.addressBar = this.resize = this.background = this.navigationURL = this.hostSidebar = this.bottomClearance = null;
         this.sidebar = null;
         this.resizePhase = "idle";
         this.resizeRevision = 0;
@@ -1784,6 +1820,7 @@ class ObsidianChatGPTNative extends Plugin {
             else {
                 if (this.settings.hideAddressBar || state.addressBar) this.updateAddressBar(view, state);
                 this.updateHostSidebar(view, state);
+                this.updateBottomClearance(view, state);
                 this.updateSmoothResize(view, state);
                 this.updateWebviewBackground(view, state);
             }
@@ -1802,6 +1839,7 @@ class ObsidianChatGPTNative extends Plugin {
             state.generation++;
             state.loading = true;
             state.navigationURL = typeof event.url === "string" ? event.url : "";
+            this.updateBottomClearance(view, state);
             this.updateWebviewBackground(view, state);
             this.restoreAddressBar(state);
             this.restoreSmoothResize(state);
@@ -1865,6 +1903,28 @@ class ObsidianChatGPTNative extends Plugin {
         });
         this.updateWebviewBackground(view, state);
         this.update(view, state);
+    }
+
+    restoreBottomClearance(state) {
+        state.bottomClearance?.dispose();
+        state.bottomClearance = null;
+    }
+
+    updateBottomClearance(view, state) {
+        let pane = null;
+        try {
+            const url = state.loading ? state.navigationURL : view.getURL();
+            if (!this.closed && !state.detached && this.settings.composerClearance && isChatGPT(url)) {
+                pane = view.closest('.workspace-leaf-content[data-type="webviewer"]');
+                // Never change a shared pane with multiple guests.
+                if (!pane?.style || pane.querySelectorAll("webview").length !== 1) pane = null;
+            }
+        } catch { pane = null; }
+        if (state.bottomClearance?.pane === pane && pane) return;
+        if (!pane && !state.bottomClearance) return;
+        this.restoreSmoothResize(state);
+        this.restoreBottomClearance(state);
+        if (pane) state.bottomClearance = new WebviewBottomClearance(view, pane);
     }
 
     restoreWebviewBackground(state) {
@@ -2294,6 +2354,7 @@ class ObsidianChatGPTNative extends Plugin {
             try { url = view.getURL(); } catch { return; }
             this.updateAddressBar(view, state);
             this.updateHostSidebar(view, state);
+            this.updateBottomClearance(view, state);
             this.updateSmoothResize(view, state);
             this.updateWebviewBackground(view, state);
             const chatgpt = isChatGPT(url);
@@ -2338,6 +2399,7 @@ class ObsidianChatGPTNative extends Plugin {
         state.detached = true;
         this.restoreWebviewBackground(state);
         this.restoreSmoothResize(state);
+        this.restoreBottomClearance(state);
         this.restoreHostSidebar(state);
         this.restoreAddressBar(state);
         state.generation++;
@@ -2423,6 +2485,7 @@ class ThemeSettingsTab extends PluginSettingTab {
         toggle("enabled", "Match background", {desc:"Also sync light/dark mode when ChatGPT adapts to system.", redraw:true});
         toggle("matchSidebar", "Match sidebar", {disabled:!settings.enabled || settings.sidebarFreeMode});
         toggle("matchComposer", "Match composer", {disabled:!settings.enabled});
+        toggle("composerClearance", "Web Viewer bottom clearance", {desc:"Reserve 12 px below the entire ChatGPT Web Viewer for the Obsidian status bar."});
         toggle("matchAccent", "Match accent color");
         toggle("matchSelection", "Match text selection");
         toggle("squareFrame", "Square window corners");
@@ -2500,6 +2563,7 @@ module.exports.HostNavigationButtons = HostNavigationButtons;
 module.exports.makeSidebarFreeCSS = makeSidebarFreeCSS;
 module.exports.invokeNativeNavigation = invokeNativeNavigation;
 module.exports.WebviewBackground = WebviewBackground;
+module.exports.WebviewBottomClearance = WebviewBottomClearance;
 
 module.exports.launcherDestination = launcherDestination;
 module.exports.openLauncherTab = openLauncherTab;

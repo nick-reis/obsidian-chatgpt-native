@@ -7,6 +7,7 @@ const DEFAULT_SETTINGS = {
     enabled: true,
     matchSidebar: true,
     matchComposer: true,
+    composerClearance: true,
     matchAccent: true,
     matchSelection: true,
     alwaysShowSidebarToggle: true,

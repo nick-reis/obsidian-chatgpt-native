@@ -165,6 +165,7 @@ class ObsidianChatGPTNative extends Plugin {
             else {
                 if (this.settings.hideAddressBar || state.addressBar) this.updateAddressBar(view, state);
                 this.updateHostSidebar(view, state);
+                this.updateBottomClearance(view, state);
                 this.updateSmoothResize(view, state);
                 this.updateWebviewBackground(view, state);
             }
@@ -183,6 +184,7 @@ class ObsidianChatGPTNative extends Plugin {
             state.generation++;
             state.loading = true;
             state.navigationURL = typeof event.url === "string" ? event.url : "";
+            this.updateBottomClearance(view, state);
             this.updateWebviewBackground(view, state);
             this.restoreAddressBar(state);
             this.restoreSmoothResize(state);
@@ -246,6 +248,28 @@ class ObsidianChatGPTNative extends Plugin {
         });
         this.updateWebviewBackground(view, state);
         this.update(view, state);
+    }
+
+    restoreBottomClearance(state) {
+        state.bottomClearance?.dispose();
+        state.bottomClearance = null;
+    }
+
+    updateBottomClearance(view, state) {
+        let pane = null;
+        try {
+            const url = state.loading ? state.navigationURL : view.getURL();
+            if (!this.closed && !state.detached && this.settings.composerClearance && isChatGPT(url)) {
+                pane = view.closest('.workspace-leaf-content[data-type="webviewer"]');
+                // Never change a shared pane with multiple guests.
+                if (!pane?.style || pane.querySelectorAll("webview").length !== 1) pane = null;
+            }
+        } catch { pane = null; }
+        if (state.bottomClearance?.pane === pane && pane) return;
+        if (!pane && !state.bottomClearance) return;
+        this.restoreSmoothResize(state);
+        this.restoreBottomClearance(state);
+        if (pane) state.bottomClearance = new WebviewBottomClearance(view, pane);
     }
 
     restoreWebviewBackground(state) {
@@ -675,6 +699,7 @@ class ObsidianChatGPTNative extends Plugin {
             try { url = view.getURL(); } catch { return; }
             this.updateAddressBar(view, state);
             this.updateHostSidebar(view, state);
+            this.updateBottomClearance(view, state);
             this.updateSmoothResize(view, state);
             this.updateWebviewBackground(view, state);
             const chatgpt = isChatGPT(url);
@@ -719,6 +744,7 @@ class ObsidianChatGPTNative extends Plugin {
         state.detached = true;
         this.restoreWebviewBackground(state);
         this.restoreSmoothResize(state);
+        this.restoreBottomClearance(state);
         this.restoreHostSidebar(state);
         this.restoreAddressBar(state);
         state.generation++;

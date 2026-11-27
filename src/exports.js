@@ -18,6 +18,7 @@ module.exports.HostNavigationButtons = HostNavigationButtons;
 module.exports.makeSidebarFreeCSS = makeSidebarFreeCSS;
 module.exports.invokeNativeNavigation = invokeNativeNavigation;
 module.exports.WebviewBackground = WebviewBackground;
+module.exports.WebviewBottomClearance = WebviewBottomClearance;
 
 module.exports.launcherDestination = launcherDestination;
 module.exports.openLauncherTab = openLauncherTab;

@@ -43,7 +43,7 @@ Most features are ready to use immediately. All toggles are enabled by default o
 
 | Section | Options |
 | --- | --- |
-| Appearance | Background, sidebar, composer, accent and selection colors; square corners; solid title bar |
+| Appearance | Background, sidebar, composer, accent and selection colors; square corners; solid title bar; Web Viewer bottom clearance |
 | Navigation | Sidebar-free mode, optional sidebar toggle, title bar and address bar visibility |
 | Performance | Smooth resizing, Web Viewer background, reduced animations and blur, sidebar preloading, long-chat optimization |
 | Launcher | Ribbon button, new chat or saved conversation |
@@ -67,6 +67,21 @@ For best theme matching, select **Adapt to system** in ChatGPT's appearance sett
 Replace `main.js` and `manifest.json` in the installed plugin directory, then reload the plugin and refresh the ChatGPT tab. Keep `data.json` to retain your settings.
 
 If upgrading from the former ChatGPT Theme Sync plugin, disable it first, rename its installed folder from `chatgpt-theme-sync` to `obsidian-chatgpt-native`, and replace the two plugin files. Restart Obsidian and enable the renamed plugin. Custom hotkeys may need to be reassigned.
+
+## Development hot reload
+
+With the Obsidian **Hot Reload** community plugin enabled, run:
+
+```sh
+python3 deploy.py
+```
+
+This rebuilds `main.js`, copies changed runtime files into the installed
+plugin directory, and creates the installed `.hotreload` marker. Existing
+`data.json` is preserved. The default vault is `~/Documents/Obsidian Vault`;
+use `--vault "/path/to/vault"` if needed. Hot Reload watches the installed
+files, not this source checkout, so run the deploy command after edits.
+No manual plugin toggle should be necessary once Hot Reload is active.
 
 ## Development
 

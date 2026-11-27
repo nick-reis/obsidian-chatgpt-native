@@ -2,6 +2,10 @@
 
 Archived implementation and release notes. These describe earlier versions; consult the current README for supported features and defaults.
 
+## Header and composer clearance
+
+Expand title-only header coverage and refresh the existing bounded header detector after viewport resizing. Known title nodes are hidden independently of whether Share or New chat is mounted, excluding sidebar, messages, dialogs, and composer. Add an enabled-by-default Web Viewer bottom clearance setting: reserve 12 px on the outer Obsidian pane rather than inside the guest composer. Restore original pane styles on navigation away, disable, or unload. The immediate resize host remains unchanged in normal nested layouts. Live verification of header selectors still depends on ChatGPT's private DOM.
+
 ## Sidebar toggle
 
 Enable **Always show sidebar toggle** to show a header button and an overlay sidebar at desktop widths, while leaving the native narrow layout unchanged. It invokes ChatGPT’s own sidebar action and respects its responsive layout. At desktop width the plugin owns overlay visibility independently of ChatGPT’s restored sidebar state. The root-level compact CSS is applied immediately, even before the shell or header is hydrated. A fallback header toggle is available when the native New chat control is absent. Explicit open/close actions use ChatGPT’s native toggle when needed. Narrow layouts remain native. It is independent of theme matching and is removed when disabled. The control depends on ChatGPT’s current interface selectors.

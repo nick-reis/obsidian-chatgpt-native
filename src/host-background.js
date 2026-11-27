@@ -29,3 +29,30 @@ class WebviewBackground {
         this.saved = [];
     }
 }
+
+// Reserve space outside the guest, on the Obsidian pane itself. The guest
+// viewport is genuinely shorter; no dependency on ChatGPT's private DOM.
+// Prefer the outer pane so the immediate webview resize host stays intact.
+class WebviewBottomClearance {
+    constructor(view, pane) {
+        this.view = view;
+        this.pane = pane;
+        this.saved = [];
+        const style = pane.style;
+        for (const [name, value] of [["box-sizing", "border-box"], ["padding-bottom", "12px"]]) {
+            const entry = {name, old:style.getPropertyValue(name), priority:style.getPropertyPriority(name)};
+            style.setProperty(name, value, "important");
+            entry.applied = style.getPropertyValue(name);
+            this.saved.push(entry);
+        }
+    }
+    dispose() {
+        const style = this.pane.style;
+        for (const {name, old, priority, applied} of this.saved.reverse()) {
+            if (style.getPropertyValue(name) !== applied || style.getPropertyPriority(name) !== "important") continue;
+            if (old) style.setProperty(name, old, priority);
+            else style.removeProperty(name);
+        }
+        this.saved = [];
+    }
+}

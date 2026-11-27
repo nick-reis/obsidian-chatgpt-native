@@ -1,7 +1,13 @@
 function makeHiddenHeaderCSS() {
     // Only the ChatGPT page header and our own fallback control. Keep the
     // conversation, composer, navigation overlay and Obsidian toolbar intact.
-    return "#page-header, #thread-header, [data-testid='conversation-header'], [data-testid='thread-header'], [data-testid='chat-header'], [data-testid='page-header'], .app-shell-main-header, [data-app-shell-header], [data-app-shell-main-header], [data-obsidian-hidden-toolbar], #obsidian-chatgpt-sidebar-toggle { display: none !important; }";
+    const headers = "#page-header, #thread-header, [data-testid='conversation-header'], [data-testid='thread-header'], [data-testid='chat-header'], [data-testid='page-header'], .app-shell-main-header, [data-app-shell-header], [data-app-shell-main-header], [data-obsidian-hidden-toolbar], #obsidian-chatgpt-sidebar-toggle";
+    // A title-only header can mount before (or without) Share/New chat.
+    // Exclude sidebar titles, message content, dialogs, and the composer.
+    const titles = ":is(#conversation-title, #thread-title, [data-testid='conversation-title'], [data-testid='conversation-title-button'], [data-testid='thread-title'], [data-testid='chat-title'], [data-testid='chat-title-button'])";
+    const protectedContent = ":not(:is(aside *, nav *, article *, [role=dialog] *, [data-message-author-role] *, #app-shell-sidebar *, #browser-sidebar-popover *, #thread-bottom *, form *))";
+    return headers + " { display: none !important; }\n" +
+        "[data-app-shell-sidebar-open] " + titles + protectedContent + " { display: none !important; }";
 }
 
 
@@ -16,7 +22,7 @@ function installHeaderHiding(enabled) {
     if (!enabled) { window[key]?.dispose(); return true; }
     if (window[key]) { window[key].refresh(); return true; }
     const attr = "data-obsidian-hidden-toolbar";
-    const controls = 'button[aria-label="New chat"], a[aria-label="New chat"], button[aria-label="Share"], button[aria-label="Share chat"], button[data-testid="share-chat-button"], #obsidian-chatgpt-sidebar-toggle';
+    const controls = 'button[aria-label="New chat"], a[aria-label="New chat"], button[aria-label="Share"], button[aria-label="Share chat"], button[data-testid="share-chat-button"], button[data-testid="model-switcher-dropdown-button"], button[data-testid="conversation-menu-button"], button[data-testid="chat-menu-button"], #obsidian-chatgpt-sidebar-toggle';
     const marked = new Set();
     let frame = 0, disposed = false;
     function discover() {
@@ -61,6 +67,7 @@ function installHeaderHiding(enabled) {
             }
         }
     });
+    window.addEventListener?.("resize", schedule);
     observer.observe(document.documentElement, {childList:true, subtree:true,
         attributes:true, attributeFilter:["aria-label","data-testid","data-app-shell-sidebar-open"]});
     window[key] = {
@@ -68,6 +75,7 @@ function installHeaderHiding(enabled) {
         dispose() {
             disposed = true;
             observer.disconnect();
+            window.removeEventListener?.("resize", schedule);
             if (frame) cancelAnimationFrame(frame);
             for (const row of marked) row.removeAttribute(attr);
             marked.clear();

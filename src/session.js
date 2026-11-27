@@ -15,7 +15,7 @@ class WebviewSession {
         this.sidebarQueue = Promise.resolve();
         this.listeners = [];
         this.key = this.signature = this.sidebarEnabled = this.headerEnabled = null;
-        this.addressBar = this.resize = this.background = this.navigationURL = this.hostSidebar = null;
+        this.addressBar = this.resize = this.background = this.navigationURL = this.hostSidebar = this.bottomClearance = null;
         this.sidebar = null;
         this.resizePhase = "idle";
         this.resizeRevision = 0;
